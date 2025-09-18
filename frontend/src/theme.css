@@ -1,0 +1,103 @@
+/* Indigo single-color theme overrides */
+:root {
+  --indigo-50: #eef2ff;
+  --indigo-100: #e0e7ff;
+  --indigo-200: #c7d2fe;
+  --indigo-300: #a5b4fc;
+  --indigo-400: #818cf8;
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
+  --indigo-700: #4338ca;
+  --indigo-800: #3730a3;
+  --indigo-900: #312e81;
+}
+
+body {
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,0.25), transparent),
+              radial-gradient(1000px 600px at 100% 0%, rgba(79,70,229,0.25), transparent),
+              linear-gradient(180deg, var(--indigo-900), var(--indigo-800));
+  color: #111827;
+}
+
+.header {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+.header h1 {
+  background: linear-gradient(135deg, var(--indigo-500), var(--indigo-700));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.tabs-container { background: rgba(255,255,255,0.06) !important; }
+.tab { color: rgba(255,255,255,0.75) !important; }
+.tab:hover { background: rgba(255,255,255,0.08) !important; }
+.tab.active {
+  color: #fff !important;
+  border-bottom-color: var(--indigo-300) !important;
+  background: rgba(255,255,255,0.12) !important;
+}
+
+/* Panels / cards */
+.panel,
+.chat-container,
+.rag-container {
+  background: rgba(255,255,255,0.96) !important;
+  box-shadow: 0 20px 40px rgba(31, 41, 55, 0.25) !important;
+}
+
+/* Chat header */
+.chat-header { background: linear-gradient(135deg, var(--indigo-500), var(--indigo-700)) !important; }
+
+/* Messages */
+.message.user {
+  background: linear-gradient(135deg, var(--indigo-500), var(--indigo-600)) !important;
+}
+.message.assistant {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+.message.loading { background: var(--indigo-50) !important; border-color: var(--indigo-200) !important; }
+
+/* Inputs and buttons */
+.chat-input:focus,
+.session-input:focus,
+.question-input:focus {
+  border-color: var(--indigo-400) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+.send-button,
+.upload-button,
+.ask-button {
+  background: linear-gradient(135deg, var(--indigo-500), var(--indigo-700)) !important;
+}
+.send-button:hover:not(:disabled),
+.upload-button:hover:not(:disabled),
+.ask-button:hover:not(:disabled) {
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.35) !important;
+}
+
+/* Thinking UI accents */
+.thinking-toggle {
+  background: rgba(99,102,241,0.08) !important;
+  border-color: rgba(99,102,241,0.25) !important;
+  color: var(--indigo-600) !important;
+}
+.thinking-toggle:hover { background: rgba(99,102,241,0.12) !important; }
+.thinking-header { background: rgba(99,102,241,0.06) !important; }
+.thinking-title { color: var(--indigo-600) !important; }
+.thinking-steps::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.35) !important; }
+
+/* Scrollbars */
+.chat-messages::-webkit-scrollbar-thumb,
+.rag-content::-webkit-scrollbar-thumb,
+.history-content::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.35) !important;
+}
+.chat-messages::-webkit-scrollbar-thumb:hover,
+.rag-content::-webkit-scrollbar-thumb:hover,
+.history-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5) !important;
+}
+
+
