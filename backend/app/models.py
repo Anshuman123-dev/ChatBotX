@@ -1,5 +1,5 @@
 # models.py
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 
 class ChatMessage(BaseModel):
@@ -44,3 +44,24 @@ class MessageResponse(BaseModel):
     content: str
     thinking: List
     timestamp: str
+
+# Authentication Models
+class UserRegister(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    username: str
+    created_at: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserResponse

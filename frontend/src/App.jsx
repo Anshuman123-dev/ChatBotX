@@ -1,20 +1,79 @@
 import React, { useEffect, useState } from "react";
 import ChatSearch from "./ChatSearch";
+import Auth from "./Auth";
+import { useAuth } from "./AuthContext";
 import { getSessions, createSession, deleteSession, renameSession } from "./api";
 import "./App.css";
 import "./theme.css";
 
 function App() {
+  const { user, isGuest, logout, hasChosenMode, loading: authLoading } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [activeId, setActiveId] = useState('default');
   const [loading, setLoading] = useState(true);
 
-  // Load sessions from database on mount
+  // Show auth screen if user hasn't chosen a mode
+  if (authLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white',
+        fontSize: '1.5rem'
+      }}>
+        Loading...
+      </div>
+    );
+  }
+
+  if (!hasChosenMode) {
+    return <Auth />;
+  }
+
+  return <MainApp 
+    isGuest={isGuest}
+    user={user}
+    logout={logout}
+    sessions={sessions}
+    setSessions={setSessions}
+    activeId={activeId}
+    setActiveId={setActiveId}
+    loading={loading}
+    setLoading={setLoading}
+  />;
+}
+
+function MainApp({ isGuest, user, logout, sessions, setSessions, activeId, setActiveId, loading, setLoading }) {
+  // Load sessions from database on mount (or localStorage for guests)
   useEffect(() => {
     loadSessions();
-  }, []);
+  }, [isGuest]);
 
   async function loadSessions() {
+    if (isGuest) {
+      // For guest users, use localStorage
+      const guestSessions = localStorage.getItem('guest_sessions');
+      if (guestSessions) {
+        try {
+          const parsed = JSON.parse(guestSessions);
+          setSessions(parsed);
+          if (parsed.length > 0) {
+            setActiveId(parsed[0].session_id);
+          }
+        } catch {
+          setSessions([{ session_id: 'default', name: 'Default Chat' }]);
+        }
+      } else {
+        setSessions([{ session_id: 'default', name: 'Default Chat' }]);
+      }
+      setLoading(false);
+      return;
+    }
+
+    // For authenticated users, use database
     try {
       const sessionsData = await getSessions();
       if (sessionsData.length === 0) {
@@ -31,18 +90,7 @@ function App() {
       }
     } catch (error) {
       console.error('Failed to load sessions from database, using fallback:', error);
-      // Fallback to localStorage or default session
-      const fallbackSessions = localStorage.getItem('chat_sessions');
-      if (fallbackSessions) {
-        try {
-          const parsed = JSON.parse(fallbackSessions);
-          setSessions(parsed.map(s => typeof s === 'string' ? { session_id: s, name: s } : s));
-        } catch {
-          setSessions([{ session_id: 'default', name: 'Default Chat' }]);
-        }
-      } else {
-        setSessions([{ session_id: 'default', name: 'Default Chat' }]);
-      }
+      setSessions([{ session_id: 'default', name: 'Default Chat' }]);
     } finally {
       setLoading(false);
     }
@@ -56,24 +104,42 @@ function App() {
   async function addSession(){
     const newId = `session-${Date.now()}`;
     const newName = `Chat ${sessions.length + 1}`;
+    
+    if (isGuest) {
+      // For guest users, store in localStorage
+      const updatedSessions = [...sessions, { session_id: newId, name: newName }];
+      setSessions(updatedSessions);
+      localStorage.setItem('guest_sessions', JSON.stringify(updatedSessions));
+      selectSession(newId);
+      return;
+    }
+
+    // For authenticated users, use database
     try {
       await createSession(newId, newName);
       const updatedSessions = [...sessions, { session_id: newId, name: newName }];
       setSessions(updatedSessions);
       selectSession(newId);
     } catch (error) {
-      console.error('Failed to create session in database, using fallback:', error);
-      // Fallback: create session locally
-      const updatedSessions = [...sessions, { session_id: newId, name: newName }];
-      setSessions(updatedSessions);
-      // Save to localStorage as fallback
-      localStorage.setItem('chat_sessions', JSON.stringify(updatedSessions.map(s => s.session_id)));
-      selectSession(newId);
+      console.error('Failed to create session in database:', error);
+      alert('Failed to create session');
     }
   }
 
   async function deleteSessionHandler(id){
     if (sessions.length === 1) return;
+    
+    if (isGuest) {
+      // For guest users, update localStorage
+      const remaining = sessions.filter(s => s.session_id !== id);
+      setSessions(remaining);
+      localStorage.setItem('guest_sessions', JSON.stringify(remaining));
+      const nextActive = remaining[0].session_id;
+      selectSession(nextActive);
+      return;
+    }
+
+    // For authenticated users, use database
     try {
       await deleteSession(id);
       const remaining = sessions.filter(s => s.session_id !== id);
@@ -91,6 +157,17 @@ function App() {
     const name = prompt('Rename session', currentSession?.name || id);
     if (!name || name === currentSession?.name) return;
     
+    if (isGuest) {
+      // For guest users, update localStorage
+      const updatedSessions = sessions.map(s => 
+        s.session_id === id ? { ...s, name } : s
+      );
+      setSessions(updatedSessions);
+      localStorage.setItem('guest_sessions', JSON.stringify(updatedSessions));
+      return;
+    }
+
+    // For authenticated users, use database
     try {
       await renameSession(id, name);
       const updatedSessions = sessions.map(s => 
@@ -104,10 +181,21 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className="app-container">
+      {isGuest && (
+        <div className="guest-banner">
+          <span>🎭 Guest Mode - Your data is stored locally only.</span>
+          <button onClick={logout} className="guest-banner-btn">Sign In to Save</button>
+        </div>
+      )}
+      
+      <div className="app-shell">
+        <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="brand">AI Assistant</div>
+          <div className="brand">
+            🤖 AI Assistant
+            {user && <div className="user-badge">{user.username}</div>}
+          </div>
           <button className="new-session" onClick={addSession}>+ New Chat</button>
         </div>
         <div className="session-list">
@@ -125,10 +213,24 @@ function App() {
             ))
           )}
         </div>
+        
+        <div className="sidebar-footer">
+          {user ? (
+            <button className="logout-btn" onClick={logout}>
+              🚪 Logout
+            </button>
+          ) : (
+            <button className="logout-btn" onClick={logout}>
+              🔑 Sign In
+            </button>
+          )}
+        </div>
       </aside>
-      <main className="main-panel">
-        <ChatSearch />
-      </main>
+      
+        <main className="main-panel">
+          <ChatSearch />
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,55 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 
+// Helper to get auth token from localStorage
+function getAuthToken() {
+  return localStorage.getItem('auth_token');
+}
+
+// Helper to add auth header if token exists
+function getHeaders(includeAuth = true) {
+  const headers = { "Content-Type": "application/json" };
+  const token = getAuthToken();
+  if (includeAuth && token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+// Authentication API functions
+export async function registerUser(email, username, password) {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, username, password }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data?.detail || 'Registration failed');
+  }
+  return res.json();
+}
+
+export async function loginUser(email, password) {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data?.detail || 'Login failed');
+  }
+  return res.json();
+}
+
+export async function getCurrentUser() {
+  const res = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: getHeaders(true),
+  });
+  if (!res.ok) throw new Error('Failed to get current user');
+  return res.json();
+}
+
 export async function searchChat(messages) {
   const res = await fetch(`${API_BASE}/api/search-chat`, {
     method: "POST",

@@ -1,12 +1,15 @@
 # main.py
 import os
 import validators
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from dotenv import load_dotenv
-from .models import SearchRequest, SimpleRequest, RagUploadResponse, RagQueryRequest, SummarizeRequest, SessionRequest, MessageRequest, SessionResponse, MessageResponse
+from .models import (SearchRequest, SimpleRequest, RagUploadResponse, RagQueryRequest, 
+                     SummarizeRequest, SessionRequest, MessageRequest, SessionResponse, 
+                     MessageResponse, UserRegister, UserLogin, Token, UserResponse)
 from .database import DatabaseManager
+from .auth import get_current_user_optional, create_access_token, get_password_hash, verify_password
 from .search_agent import run_search_agent, get_search_agent
 from .rag_manager import create_vectorstore_from_pdfs, query_rag, get_session
 import tempfile
@@ -30,6 +33,110 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Authentication Endpoints
+@app.post("/api/auth/register", response_model=Token)
+async def register(user_data: UserRegister):
+    """Register a new user"""
+    # Check if email already exists
+    existing_user = await DatabaseManager.get_user_by_email(user_data.email)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    # Check if username already exists
+    existing_username = await DatabaseManager.get_user_by_username(user_data.username)
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken"
+        )
+    
+    # Validate password length
+    if len(user_data.password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters long"
+        )
+    
+    # Hash password and create user
+    hashed_password = get_password_hash(user_data.password)
+    user = await DatabaseManager.create_user(
+        email=user_data.email,
+        username=user_data.username,
+        hashed_password=hashed_password
+    )
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create user"
+        )
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": user["id"]})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "username": user["username"],
+            "created_at": user["created_at"].isoformat()
+        }
+    }
+
+@app.post("/api/auth/login", response_model=Token)
+async def login(user_data: UserLogin):
+    """Login user"""
+    # Find user by email
+    user = await DatabaseManager.get_user_by_email(user_data.email)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
+    
+    # Verify password
+    if not verify_password(user_data.password, user["password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": user["id"]})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "username": user["username"],
+            "created_at": user["created_at"].isoformat()
+        }
+    }
+
+@app.get("/api/auth/me", response_model=UserResponse)
+async def get_current_user_info(current_user: dict = Depends(get_current_user_optional)):
+    """Get current user information"""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    
+    return {
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "username": current_user["username"],
+        "created_at": current_user["created_at"].isoformat()
+    }
 
 @app.post("/api/search-chat")
 def search_chat(req: SearchRequest):

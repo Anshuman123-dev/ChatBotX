@@ -48,6 +48,7 @@ print(f"📡 MongoDB URI: {MONGODB_URL.replace(MONGODB_URL.split('@')[0].split('
 # Collections
 sessions_collection = database["sessions"]
 messages_collection = database["messages"]
+users_collection = database["users"]
 
 # Test connection on startup
 async def test_connection():
@@ -177,3 +178,58 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error renaming session: {e}")
             return True  # Return True to prevent app crash
+
+    # User Management Methods
+    @staticmethod
+    async def create_user(email: str, username: str, hashed_password: str) -> Optional[Dict]:
+        """Create a new user"""
+        try:
+            user_doc = {
+                "email": email.lower(),
+                "username": username,
+                "password": hashed_password,
+                "created_at": datetime.utcnow()
+            }
+            result = await users_collection.insert_one(user_doc)
+            user_doc["id"] = str(result.inserted_id)
+            return user_doc
+        except Exception as e:
+            print(f"Error creating user: {e}")
+            return None
+
+    @staticmethod
+    async def get_user_by_email(email: str) -> Optional[Dict]:
+        """Get user by email"""
+        try:
+            user = await users_collection.find_one({"email": email.lower()})
+            if user:
+                user["id"] = str(user["_id"])
+            return user
+        except Exception as e:
+            print(f"Error getting user by email: {e}")
+            return None
+
+    @staticmethod
+    async def get_user_by_username(username: str) -> Optional[Dict]:
+        """Get user by username"""
+        try:
+            user = await users_collection.find_one({"username": username})
+            if user:
+                user["id"] = str(user["_id"])
+            return user
+        except Exception as e:
+            print(f"Error getting user by username: {e}")
+            return None
+
+    @staticmethod
+    async def get_user_by_id(user_id: str) -> Optional[Dict]:
+        """Get user by ID"""
+        try:
+            from bson import ObjectId
+            user = await users_collection.find_one({"_id": ObjectId(user_id)})
+            if user:
+                user["id"] = str(user["_id"])
+            return user
+        except Exception as e:
+            print(f"Error getting user by ID: {e}")
+            return None

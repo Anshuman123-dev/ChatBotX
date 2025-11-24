@@ -17,3 +17,6 @@ youtube-transcript-api
 unstructured
 pymongo
 motor
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
