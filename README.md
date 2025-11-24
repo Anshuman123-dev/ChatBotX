@@ -269,6 +269,6 @@ docker-compose up -d
 
 ---
 
-**Made with ❤️ by [Your Name]**
+**Made with ❤️ by Anshuman**
 
 *Star this repository if you found it helpful!*
